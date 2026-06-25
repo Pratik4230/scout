@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/api",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.4",
+  "dependencies": {
+    "@trpc/server": "^11.18.0",
+    "@workspace/auth": "workspace:*",
+    "@workspace/db": "workspace:*",
+    "@workspace/validators": "workspace:*",
+    "superjson": "^2.2.6",
+    "zod": "^4.4.3"
+  }
+}

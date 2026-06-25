@@ -3,7 +3,7 @@
 > **Status:** Living document — source of truth for building Scout  
 > **Product name:** Scout  
 > **Repo:** `scout` (Turborepo monorepo)  
-> **Last updated:** 2026-06-24
+> **Last updated:** 2026-06-25
 
 ---
 
@@ -227,10 +227,11 @@ Every **workspace (organization)** is an isolated tenant with its own:
 
 | Layer | Choice | Notes |
 |-------|--------|-------|
-| Monorepo | **Turborepo** + **pnpm** | Already initialized (`create-turbo`) |
+| Monorepo | **Turborepo** + **pnpm** | `apps/web` + shared `packages/*` |
 | Web app | **Next.js 16** (App Router) | `apps/web` |
-| API | **tRPC** | Type-safe procedures in shared package |
-| UI | **Shadcn UI** | In `packages/ui` |
+| API | **tRPC** | Type-safe procedures in `packages/api` |
+| UI | **Shadcn UI** | In `apps/web/components/ui` |
+| Data fetching | **TanStack Query v5** | All client API calls in `apps/web` |
 | Auth | **Better Auth** | `packages/auth` |
 | Payments | **Razorpay** | Subscriptions + usage billing |
 | GitHub | **Octokit** + **Webhooks** | Real PR data only — no hardcoded mocks |
@@ -250,17 +251,26 @@ Every **workspace (organization)** is an isolated tenant with its own:
 
 ## 6. Monorepo Architecture
 
-### Current structure (initialized)
+### Current structure (as of Phase 0)
 
 ```
 scout/
 ├── apps/
-│   ├── web/          # Next.js — primary deploy target
-│   └── docs/         # Optional — remove if unused
+│   └── web/                    # Next.js — primary deploy target
+│       ├── app/
+│       │   └── api/auth/[...all]/  # Better Auth handler
+│       ├── components/ui/    # Shadcn
+├── .env.example                # template; ./setup.sh → root .env + hard links in workspaces
+├── setup.sh
 ├── packages/
-│   ├── ui/           # Shadcn components
+│   ├── db/                     # Drizzle + Neon client + auth schema
+│   ├── auth/                   # Better Auth server + React client
+│   ├── api/                    # tRPC (stub)
+│   ├── validators/             # Zod (stub)
 │   ├── eslint-config/
 │   └── typescript-config/
+├── docs/
+│   └── SCOUT-SPEC.md
 ├── turbo.json
 └── pnpm-workspace.yaml
 ```
@@ -281,13 +291,14 @@ scout/
 │       │       ├── inngest/    # Inngest serve endpoint
 │       │       └── webhooks/
 │       │           └── github/ # GitHub webhook receiver
+│       ├── components/
+│       │   └── ui/             # Shadcn UI components
 │       └── ...
 │
 ├── packages/
 │   ├── api/                    # tRPC routers, procedures, context
 │   ├── auth/                   # Better Auth server config + client
 │   ├── db/                     # Drizzle schema, migrations, client
-│   ├── ui/                     # Shadcn + shared components
 │   ├── validators/             # Shared Zod schemas
 │   ├── github/                 # Octokit client, webhook verification, PR helpers
 │   ├── ai/                     # AI SDK prompts, agents, review logic
@@ -306,28 +317,27 @@ scout/
 
 ```
 apps/web
-  ├── @repo/api
-  ├── @repo/auth
-  ├── @repo/db
-  ├── @repo/ui
-  ├── @repo/validators
-  ├── @repo/github
-  ├── @repo/ai
-  ├── @repo/billing
-  └── @repo/inngest
+  ├── @workspace/api
+  ├── @workspace/auth
+  ├── @workspace/db
+  ├── @workspace/validators
+  ├── @workspace/github      # Phase 4+
+  ├── @workspace/ai           # Phase 2+
+  ├── @workspace/billing      # Phase 7+
+  └── @workspace/inngest      # Phase 2+
 
-@repo/api
-  ├── @repo/db
-  ├── @repo/auth
-  ├── @repo/validators
-  ├── @repo/github
-  ├── @repo/ai
-  └── @repo/billing
+@workspace/api
+  ├── @workspace/db
+  ├── @workspace/auth
+  ├── @workspace/validators
+  ├── @workspace/github
+  ├── @workspace/ai
+  └── @workspace/billing
 
-@repo/inngest
-  ├── @repo/db
-  ├── @repo/ai
-  └── @repo/github
+@workspace/inngest
+  ├── @workspace/db
+  ├── @workspace/ai
+  └── @workspace/github
 ```
 
 ### Vercel deployment
@@ -626,11 +636,14 @@ Build incrementally. Each phase should be deployable.
 
 ### Phase 0 — Foundation (current → week 1)
 
-- [x] Turborepo + Next.js (`create-turbo`)
-- [ ] Add `packages/db` (Drizzle + PostgreSQL)
+- [x] Turborepo + Next.js
+- [x] Remove turbo boilerplate (`apps/docs`, `packages/ui`)
+- [x] Shadcn in `apps/web/components/ui` (radix-nova preset)
+- [x] Add `packages/db` (Drizzle + Neon PostgreSQL)
 - [ ] Add `packages/api` (tRPC)
-- [ ] Add `packages/auth` (Better Auth)
-- [ ] Shadcn in `packages/ui`
+- [x] Add `packages/auth` (Better Auth + organization plugin)
+- [x] Add `packages/validators` (shared Zod schemas — stub)
+- [ ] TanStack Query v5 + tRPC client in `apps/web`
 - [ ] Basic layout: marketing + dashboard shell
 - [ ] Vercel deploy + Neon database
 - [ ] `vercel link` + env setup
@@ -700,10 +713,11 @@ Build incrementally. Each phase should be deployable.
 | Requirement | Status |
 |-------------|--------|
 | tRPC monorepo | 🟡 In progress (turbo done, tRPC pending) |
-| Next.js web app | 🟡 Scaffolded |
-| PostgreSQL + ORM | ⬜ Not started |
-| Better Auth | ⬜ Not started |
-| Shadcn UI | 🟡 Basic `packages/ui` only |
+| Next.js web app | 🟡 Scaffolded (Shadcn + Tailwind v4) |
+| PostgreSQL + ORM | 🟡 Drizzle + Neon wired; run migrations |
+| Better Auth | 🟡 Configured; needs env + DB migrate |
+| Shadcn UI | 🟡 Initialized in `apps/web` (button, card) |
+| TanStack Query v5 | ⬜ Not started |
 | GitHub + webhooks (real data) | ⬜ Not started |
 | AI SDK agents | ⬜ Not started |
 | Inngest workflows | ⬜ Not started |
@@ -712,7 +726,7 @@ Build incrementally. Each phase should be deployable.
 | Public GitHub repo | ⬜ Not started |
 | Live Vercel deployment | ⬜ Not started |
 | Demo video | ⬜ Not started |
-| README (full) | ⬜ Not started |
+| README (full) | 🟡 Basic root README |
 
 ---
 

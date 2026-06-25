@@ -7,7 +7,8 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "db:auth:generate": "pnpm dlx auth@latest generate --config ./packages/auth/src/server.ts --output ./packages/db/src/schema/auth.ts --yes"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
